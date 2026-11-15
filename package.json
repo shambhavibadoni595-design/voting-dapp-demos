@@ -1,0 +1,30 @@
+{
+  "name": "Demos-voting-dapp",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Demos: polls on Ethereum Sepolia. One vote per wallet, every ballot a public transaction.",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/export-artifacts-if-present.cjs",
+    "dev": "vite",
+    "prebuild": "node scripts/export-artifacts-if-present.cjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:contracts": "cd blockchain && npx hardhat test",
+    "test:e2e": "node e2e/run-local.mjs",
+    "test": "npm run test:contracts && npm run test:e2e"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/public-sans": "^5.2.7",
+    "@fontsource/source-serif-4": "^5.2.9",
+    "ethers": "^6.17.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright-core": "^1.65.1",
+    "vite": "^5.4.11"
+  }
+}

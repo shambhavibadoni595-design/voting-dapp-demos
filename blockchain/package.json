@@ -1,0 +1,20 @@
+{
+  "name": "ballot-blockchain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VotingDApp contract, tests and deployment scripts for Ballot (Ethereum Sepolia)",
+  "scripts": {
+    "compile": "hardhat compile && node scripts/export-artifacts.cjs",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "node:local": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.cjs --network sepolia",
+    "verify:sepolia": "hardhat run scripts/verify.cjs --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.26.0",
+    "solc": "0.8.28"
+  }
+}

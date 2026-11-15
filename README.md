@@ -9,6 +9,14 @@
 
 There is no server and no database. The contract is the only source of truth; the site reads it through public RPC endpoints and writes to it through your wallet.
 
+## Built-in Sepolia contract
+
+Every visitor uses the same contract. No wallet is needed to browse polls, stats, or activity.
+
+- Address: [0x9E5cA66E99dA712c6A709a6C916b2ca8068BD30E](https://sepolia.etherscan.io/address/0x9E5cA66E99dA712c6A709a6C916b2ca8068BD30E)
+- Network: Ethereum Sepolia (chain ID 11155111)
+- Deployment block: [12140019](https://sepolia.etherscan.io/block/12140019)
+
 ---
 
 ## Project layout
@@ -23,7 +31,7 @@ voting-dapp/
     scripts/export-artifacts.cjs  copies ABI + bytecode into src/config
   src/
     config/contractConfig.js   network, RPCs, faucet, active-contract selection
-    config/deployment.json     the site's default contract (written by deploy)
+    config/deployment.json     the built-in public contract and deployment block
     config/VotingDAppABI.json  generated
     services/
       votingService.js         the only module the UI imports
@@ -46,31 +54,17 @@ cd blockchain && npm install && cd ..
 npm run dev            # http://localhost:3000
 ```
 
-Until a contract is deployed and configured, the site works but says **"No contract linked yet"**. It never shows sample polls or a placeholder address.
+The built-in contract is configured in `src/config/deployment.json`. `VITE_CONTRACT_ADDRESS` and `VITE_DEPLOYMENT_BLOCK` are optional developer overrides for local builds; the deployed site does not depend on Vercel environment variables.
 
 ---
 
-## Deploy to Sepolia (one time)
+## Developer only: deploying a separate contract
 
 You need a wallet holding a little Sepolia test ETH. Deploying costs about 1.23M gas; creating a poll about 220k; a vote about 95k.
 
 **Get test ETH:** open the [Google Cloud Web3 Sepolia faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), sign in with a Google account, paste your wallet address and request. Google sets the amount and daily limit. Test ETH has no monetary value.
 
-### Option A: from the website with MetaMask (no private key anywhere)
-
-1. `npm run dev` and open http://localhost:3000.
-2. In MetaMask, select an account with Sepolia ETH.
-3. Open **Contract**, click **Connect wallet**, then **Deploy a new copy** and approve the transaction in MetaMask.
-4. When it says *Your contract is deployed*, click **Use it on this site**.
-5. To make it the default for everyone, copy the address and deployment block into `.env`:
-   ```
-   VITE_CONTRACT_ADDRESS=0x...
-   VITE_DEPLOYMENT_BLOCK=12345678
-   ```
-   then restart `npm run dev` (or rebuild).
-6. Optional: create the sample poll on the **Create a poll** page: *Which technology will have the biggest impact on the future?* with *Artificial Intelligence (AI)*, *Blockchain & Web3*, *Quantum Computing*, *Robotics & Automation*.
-
-### Option B: with Hardhat
+For a separate developer test deployment, use Hardhat:
 
 1. Create a **throwaway** MetaMask account used only for deploying, fund it from the faucet, and export its private key (MetaMask → account menu → Account details → Show private key). Never use the key of a wallet that holds real funds.
 2. `cp .env.example .env` and set `DEPLOYER_PRIVATE_KEY=` (and optionally a more reliable `SEPOLIA_RPC_URL`).
@@ -105,7 +99,7 @@ npm run test:contracts    # 33 Hardhat tests
 npm run test:e2e          # full flow in Chrome against a local chain
 ```
 
-`test:e2e` starts a private Hardhat chain that uses Sepolia's chain ID, deploys with the real deploy script, builds the real site against it, and drives it in Chrome with a test-only wallet (`e2e/test-wallet.js`, never bundled into the app). It checks 32 steps: browsing without a wallet, rejected connection, wrong network and switching, poll validation, creating a poll, account switching, voting and the receipt, duplicate votes (UI and contract), insufficient gas with the faucet panel, rejected and pending transactions, creator-only closing, an expired poll, the activity feed, the receipt page, network info, linking and deploying contracts, RPC failure, disconnect and mobile layout. It then reconciles every receipt the UI showed against the chain. Screenshots go to `e2e/output/`. It needs Google Chrome installed (set `CHROME_PATH` if it is somewhere unusual).
+`test:e2e` starts a private Hardhat chain that uses Sepolia's chain ID, deploys a local test contract, builds the site against it, and drives it in Chrome with a test-only wallet (`e2e/test-wallet.js`, never bundled into the app). It checks wallet-free browsing, configured contract selection despite stale local storage, rejected connection, wrong network and switching, poll validation, creating a poll, account switching, voting and the receipt, duplicate votes, insufficient gas, rejected and pending transactions, creator-only closing, an expired poll, activity history, network info, RPC failure, disconnect and mobile layout. It reconciles every receipt the UI showed against the local chain. Screenshots go to `e2e/output/`. It needs Google Chrome installed (set `CHROME_PATH` if it is somewhere unusual).
 
 This rehearsal is not a Sepolia test. Real Sepolia needs your wallet and faucet ETH; use the checklist below.
 

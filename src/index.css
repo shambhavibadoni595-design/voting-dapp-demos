@@ -1990,6 +1990,27 @@ input[aria-invalid='true'] {
   animation: cat-float 5.2s ease-in-out infinite;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
+.assistant-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.assistant-sound-toggle {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 0.68rem;
+}
+.assistant:not(.is-open) .assistant-launcher,
+.assistant:not(.is-page-visible) .assistant-launcher {
+  animation-play-state: paused;
+}
+.assistant:not(.is-open) .tech-cat,
+.assistant:not(.is-open) .tech-cat *,
+.assistant:not(.is-page-visible) .tech-cat,
+.assistant:not(.is-page-visible) .tech-cat * {
+  animation-play-state: paused;
+}
 .assistant-launcher:hover {
   border-color: var(--accent);
   box-shadow: 0 6px 18px rgba(75, 55, 37, 0.22);
@@ -2050,8 +2071,13 @@ input[aria-invalid='true'] {
   stroke: #bb8b66;
   stroke-width: 4;
   transform-box: fill-box;
-  transform-origin: 0% 100%;
-  animation: cat-tail-sway 7.8s ease-in-out infinite;
+  transform-origin: 0% 56%;
+}
+.assistant.is-open.is-page-visible .tech-cat-tail {
+  animation: cat-tail-sway 2.6s ease-in-out infinite;
+}
+.assistant.is-open.is-page-visible.is-wagging .tech-cat-tail {
+  animation: cat-tail-wag 900ms ease-in-out 1 both;
 }
 .tech-cat-paw {
   stroke-width: 1.6;
@@ -2242,9 +2268,13 @@ input[aria-invalid='true'] {
   50% { transform: translateY(-3px); }
 }
 @keyframes cat-tail-sway {
-  0%, 78%, 100% { transform: rotate(0); }
-  82%, 90% { transform: rotate(-8deg); }
-  86%, 94% { transform: rotate(6deg); }
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+@keyframes cat-tail-wag {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-13deg); }
+  40%, 80% { transform: rotate(11deg); }
 }
 @keyframes cat-ear-twitch {
   0%, 86%, 100% { transform: rotate(0); }
@@ -2523,5 +2553,8 @@ input[aria-invalid='true'] {
   .tech-cat-orbit,
   .tech-cat-sparkle {
     animation: none !important;
+  }
+  .assistant.is-open.is-page-visible.is-wagging .tech-cat-tail {
+    animation: cat-tail-wag 900ms ease-in-out 1 both !important;
   }
 }

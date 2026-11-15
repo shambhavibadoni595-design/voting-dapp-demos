@@ -182,7 +182,7 @@ export function ActivityFeed({ actor = null, pageSize = 25, showFilters = true }
           <span className="fine">
             {feed.historyComplete
               ? `That is everything since the contract was deployed in block ${contract.deploymentBlock.toLocaleString()}.`
-              : 'The deployment block of this contract is unknown, so only about the last week of blocks was scanned. Set the deployment block on the Contract page to see full history.'}
+              : 'The deployment block is unavailable, so only recent activity could be scanned.'}
           </span>
         )}
       </div>

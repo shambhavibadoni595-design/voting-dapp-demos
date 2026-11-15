@@ -1,17 +1,12 @@
 /**
  * Network, contract and external-link configuration for Demos.
  *
- * Which contract the site reads, in priority order:
- *   1. ?contract=0x…&from=<block> in the page URL (a shared link, this visit only)
- *   2. A contract explicitly linked on the Contract page
- *   3. VITE_CONTRACT_ADDRESS / VITE_DEPLOYMENT_BLOCK from .env
- *   4. src/config/deployment.json, written by `npm run deploy:sepolia`
- *   5. A legacy browser link, only when no site default is configured
- *
- * If none of these is set, the site says so. It never falls back to a made-up address.
+ * The baked-in deployment is the default for every visitor. VITE_ values are
+ * optional developer overrides for local builds.
  */
 import { getAddress, isAddress } from 'ethers';
 import deployment from './deployment.json';
+import { LEGACY_CONTRACT_KEY, selectConfiguredContract } from './contractSelection.js';
 
 const env = import.meta.env || {};
 
@@ -68,7 +63,6 @@ export const etherscan = {
 // ---------------------------------------------------------------------------
 // Active contract selection
 // ---------------------------------------------------------------------------
-const LINK_KEY = 'ballot.linkedContract.v1';
 const listeners = new Set();
 
 function normalise(address, block, source) {
@@ -81,28 +75,6 @@ function normalise(address, block, source) {
   };
 }
 
-function readStorage() {
-  try {
-    const raw = window.localStorage.getItem(LINK_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const contract = normalise(parsed.address, parsed.deploymentBlock, 'linked');
-    return contract ? { contract, explicit: parsed.explicit === true } : null;
-  } catch {
-    return null;
-  }
-}
-
-function readUrl() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return normalise(params.get('contract'), params.get('from'), 'shared-link');
-  } catch {
-    return null;
-  }
-}
-
 /** The deployment this copy of the site ships with, if any. */
 export function getSiteDefaultContract() {
   return (
@@ -111,18 +83,8 @@ export function getSiteDefaultContract() {
   );
 }
 
-let urlContract = typeof window !== 'undefined' ? readUrl() : null;
-let current = computeActive();
-
-function computeActive() {
-  if (urlContract) return urlContract;
-  const saved = typeof window !== 'undefined' ? readStorage() : null;
-  if (saved?.explicit) return saved.contract;
-  const siteDefault = getSiteDefaultContract();
-  if (siteDefault) return siteDefault;
-  if (saved) return saved.contract;
-  return null;
-}
+let current = selectConfiguredContract(getSiteDefaultContract());
+stripContractFromUrl();
 
 export function getActiveContract() {
   return current;
@@ -134,7 +96,7 @@ export function onActiveContractChange(listener) {
 }
 
 function emit() {
-  current = computeActive();
+  current = getSiteDefaultContract();
   listeners.forEach((l) => {
     try {
       l(current);
@@ -149,13 +111,12 @@ export function saveLinkedContract(address, deploymentBlock) {
   const value = normalise(address, deploymentBlock, 'linked');
   if (!value) throw new Error('That is not a valid Ethereum address.');
   try {
-    window.localStorage.setItem(LINK_KEY, JSON.stringify({ ...value, explicit: true }));
+    window.localStorage.setItem(LEGACY_CONTRACT_KEY, JSON.stringify({ ...value, explicit: true }));
   } catch (cause) {
     const error = new Error('Could not save the linked contract in this browser. Check your storage settings and try again.');
     error.cause = cause;
     throw error;
   }
-  urlContract = null;
   stripContractFromUrl();
   emit();
   return value;
@@ -164,11 +125,10 @@ export function saveLinkedContract(address, deploymentBlock) {
 /** Forget the linked or shared contract and go back to the site's default. */
 export function resetToSiteDefault() {
   try {
-    window.localStorage.removeItem(LINK_KEY);
+    window.localStorage.removeItem(LEGACY_CONTRACT_KEY);
   } catch {
     /* ignore */
   }
-  urlContract = null;
   stripContractFromUrl();
   emit();
 }

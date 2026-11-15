@@ -144,7 +144,7 @@ function ExplorerTech() {
 function DeployTech() {
   return (
     <>
-      <p>The contract can be deployed two ways. Both need a wallet with Sepolia test ETH and an explicit approval.</p>
+      <p>Developer deployment notes (visitors use the built-in Demos contract): deploying a new contract needs a wallet with Sepolia test ETH and explicit approval.</p>
       <ul className="rules">
         <li>
           Hardhat: <code>npm run deploy:sepolia</code> in the <code>blockchain</code> folder. It runs only after the 33 contract
@@ -154,9 +154,7 @@ function DeployTech() {
           Remix IDE: paste <code>VotingDApp.sol</code> into remix.ethereum.org, compile with 0.8.28 (optimizer 200 runs, EVM
           cancun), choose Injected Provider with MetaMask on Sepolia, and deploy.
         </li>
-        <li>From this site: the Contract page can deploy a new copy straight from your wallet.</li>
       </ul>
-      <a href="#/contract">Go to the Contract page</a>
     </>
   );
 }

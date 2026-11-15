@@ -122,7 +122,7 @@ export function HomePage() {
             </p>
           </>
         ) : (
-          <p className="fine">These numbers come from the contract. Link one on the Contract page and they appear here.</p>
+          <p className="fine">These numbers come from Demos’ built-in contract on Sepolia.</p>
         )}
       </section>
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { readSoundMuted, saveSoundMuted } from '../lib/soundPreference.js';
 
 const TOUR_KEY = 'demos.tutorial.v1';
 const STEPS = [
@@ -53,7 +54,7 @@ const STEPS = [
   },
   {
     title: 'Smart contract',
-    message: 'Link an existing VotingDApp contract to read its polls, or deploy a new one to start a separate set. Deployment and poll creation require wallet confirmation.',
+    message: 'Demos reads polls and votes from one built-in VotingDApp contract on Sepolia. Browse it without a wallet, or connect to vote and create a poll.',
     route: '#/contract',
     target: 'contract-setup',
     bubble: 'The contract keeps the record.',
@@ -133,7 +134,7 @@ function getGuidance(route) {
   if (page === 'contract') {
     return {
       title: 'Contracts on Sepolia',
-      message: 'Deploy a new VotingDApp contract from a connected Sepolia wallet, or link an existing contract by address. Linking lets Demos read its polls; it does not change the contract.',
+      message: 'Demos uses one built-in VotingDApp contract on Sepolia. This page shows its address, deployment block, poll count, and vote count.',
       bubble: 'Contract setup help',
     };
   }
@@ -145,7 +146,7 @@ function getGuidance(route) {
     };
   }
   return {
-    title: 'Demos assistant',
+    title: 'Mimi, your tutorial guide',
     message: 'Demos polls are read from the blockchain. You can browse without connecting a wallet; a wallet on Sepolia is needed to vote or create a poll.',
     bubble: 'How can I help?',
   };
@@ -155,7 +156,7 @@ function TechCat({ mood = 'explaining' }) {
   return (
     <svg className="tech-cat" viewBox="0 0 76 76" data-expression={mood} aria-hidden="true">
       <path className="tech-cat-shadow" d="M13 68h50" />
-      <path className="tech-cat-tail" d="M49 57c12 7 19 1 17-7-1-3-4-4-6-2" />
+      <g className="tech-cat-tail"><path d="M49 57c12 7 19 1 17-7-1-3-4-4-6-2" /></g>
       <path className="tech-cat-body" d="M23 47c-6 4-8 12-7 19h44c1-8-2-15-8-19" />
       <path className="tech-cat-paw" d="M27 58v7m21-7v7" />
       <g className="tech-cat-ears">
@@ -232,9 +233,15 @@ export function Assistant({ route }) {
   const [notice, setNotice] = useState('');
   const [reacting, setReacting] = useState(false);
   const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(readSoundMuted);
+  const [pageVisible, setPageVisible] = useState(() => !document.hidden);
+  const [wagging, setWagging] = useState(false);
   const pendingStep = useRef(null);
   const launcherRef = useRef(null);
   const reactionTimer = useRef(null);
+  const wagTimer = useRef(null);
+  const audioContext = useRef(null);
+  const previousStep = useRef(tour.step);
   const tourActive = tour.status === 'new' || tour.status === 'in-progress';
   const context = getGuidance(route);
   const currentStep = STEPS[tour.step] || STEPS[0];
@@ -245,6 +252,49 @@ export function Assistant({ route }) {
       : tour.status === 'completed'
         ? 'complete'
         : 'greeting';
+
+  const wag = useCallback(() => {
+    if (document.hidden) return;
+    setWagging(true);
+    window.clearTimeout(wagTimer.current);
+    wagTimer.current = window.setTimeout(() => setWagging(false), 950);
+  }, []);
+
+  const playMeow = useCallback(() => {
+    if (soundMuted) return;
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = audioContext.current || new AudioContextClass();
+      audioContext.current = context;
+      if (context.state === 'suspended') context.resume().catch(() => {});
+
+      const now = context.currentTime;
+      const oscillator = context.createOscillator();
+      const envelope = context.createGain();
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(540, now);
+      oscillator.frequency.exponentialRampToValueAtTime(880, now + 0.16);
+      oscillator.frequency.exponentialRampToValueAtTime(430, now + 0.5);
+      envelope.gain.setValueAtTime(0.0001, now);
+      envelope.gain.exponentialRampToValueAtTime(0.055, now + 0.035);
+      envelope.gain.setValueAtTime(0.045, now + 0.22);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      oscillator.connect(envelope);
+      envelope.connect(context.destination);
+      oscillator.onended = () => { oscillator.disconnect(); envelope.disconnect(); };
+      oscillator.start(now);
+      oscillator.stop(now + 0.51);
+    } catch {
+      // Audio is an optional enhancement; unsupported or blocked playback stays silent.
+    }
+  }, [soundMuted]);
+
+  const toggleSound = () => {
+    const next = !soundMuted;
+    setSoundMuted(next);
+    saveSoundMuted(next);
+  };
 
   const saveTour = (next) => {
     setTour(next);
@@ -300,6 +350,7 @@ export function Assistant({ route }) {
       setNotice(blocker);
       return;
     }
+    playMeow();
     goToStep(0, { force: true });
   };
 
@@ -331,6 +382,23 @@ export function Assistant({ route }) {
       }
     }
   }, [route.path, route.query.filter, tourActive, tour.step]);
+
+  useEffect(() => {
+    if (previousStep.current !== tour.step && open && tourActive) wag();
+    previousStep.current = tour.step;
+  }, [open, tour.step, tourActive, wag]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setPageVisible(!document.hidden);
+      if (document.hidden) {
+        window.clearTimeout(wagTimer.current);
+        setWagging(false);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
   useEffect(() => {
     if (!tourActive) return undefined;
@@ -381,14 +449,20 @@ export function Assistant({ route }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  useEffect(() => () => window.clearTimeout(reactionTimer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(reactionTimer.current);
+    window.clearTimeout(wagTimer.current);
+    if (audioContext.current && audioContext.current.state !== 'closed') {
+      audioContext.current.close().catch(() => {});
+    }
+  }, []);
 
   return (
     <aside
       id="demos-assistant"
-      className={`assistant ${open ? 'is-open' : ''} ${reacting ? 'is-reacting' : ''}`}
+      className={`assistant ${open ? 'is-open' : ''} ${reacting ? 'is-reacting' : ''} ${pageVisible ? 'is-page-visible' : ''} ${wagging ? 'is-wagging' : ''}`}
       data-mood={tourActive && pendingStep.current !== null ? 'loading' : mood}
-      aria-label="Demos tech cat assistant"
+      aria-label="Mimi, your tutorial guide"
     >
       {panelMounted && (
         <section
@@ -402,10 +476,10 @@ export function Assistant({ route }) {
               <TechCat mood={tourActive && pendingStep.current !== null ? 'loading' : mood} />
               <div>
                 <h2 id="assistant-title">{tourActive ? currentStep.title : context.title}</h2>
-                <span>Demos tech cat</span>
+                <span>Mimi</span>
               </div>
             </div>
-            <button type="button" className="assistant-close" onClick={closePanel} aria-label="Close assistant">
+            <button type="button" className="assistant-close" onClick={closePanel} aria-label="Close Mimi's guide">
               <span aria-hidden="true">×</span>
             </button>
           </header>
@@ -439,21 +513,29 @@ export function Assistant({ route }) {
       {!open && bubbleVisible && !tourActive && (
         <p className="assistant-bubble" aria-hidden="true">{context.bubble}</p>
       )}
-      <button
-        ref={launcherRef}
-        type="button"
-        className="assistant-launcher"
-        aria-label={open ? 'Close Demos assistant' : 'Open Demos assistant'}
-        aria-expanded={open}
-        aria-controls="demos-assistant"
-        onClick={() => {
-          react();
-          setBubbleVisible(false);
-          setOpen((value) => !value);
-        }}
-      >
-        <TechCat mood={mood} />
-      </button>
+      <div className="assistant-controls">
+        <button type="button" className="btn btn-quiet btn-sm assistant-sound-toggle" onClick={toggleSound}
+          aria-label={soundMuted ? "Unmute Mimi's meow" : "Mute Mimi's meow"} aria-pressed={soundMuted}>
+          {soundMuted ? 'Muted' : 'Sound on'}
+        </button>
+        <button
+          ref={launcherRef}
+          type="button"
+          className="assistant-launcher"
+          aria-label={open ? "Close Mimi's guide" : 'Open Mimi, your tutorial guide'}
+          aria-expanded={open}
+          aria-controls="demos-assistant"
+          onClick={() => {
+            react();
+            wag();
+            playMeow();
+            setBubbleVisible(false);
+            setOpen((value) => !value);
+          }}
+        >
+          <TechCat mood={mood} />
+        </button>
+      </div>
     </aside>
   );
 }

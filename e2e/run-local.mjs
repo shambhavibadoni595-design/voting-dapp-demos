@@ -213,6 +213,7 @@ async function main() {
     }, A0);
     await guest.page.goto(APP);
     await guest.page.getByRole('heading', { name: 'The poll everyone can recount.' }).waitFor();
+    assert((await guest.page.evaluate(() => localStorage.getItem('ballot.linkedContract.v1'))) === null, 'stale contract was not cleared');
     await guest.page.locator('.stats').waitFor();
     await waitFor(async () => (await guest.page.locator('.stat dd').first().innerText()) === '1', 'stats');
     const vals = await guest.page.locator('.stat dd').allInnerTexts();
@@ -456,6 +457,8 @@ async function main() {
     await waitFor(async () => (await guest.page.locator('.activity-item').count()) === logs.length, `${logs.length} items`);
     const first = await guest.page.locator('.activity-item').first().locator('.act-type').innerText();
     assert(first === 'Closed', `newest item is ${first}`);
+    const allTypes = await guest.page.locator('.activity-item .act-type').allInnerTexts();
+    assert(allTypes.includes('New poll') && allTypes.includes('Vote'), `expected Create Poll and Vote events, saw ${allTypes}`);
     await guest.page.getByRole('tab', { name: 'Votes' }).click();
     const types = await guest.page.locator('.activity-item .act-type').allInnerTexts();
     assert(types.length === votes.length && types.every((t) => t === 'Vote'), `vote filter ${types}`);
@@ -493,35 +496,15 @@ async function main() {
     const block = await provider.getBlockNumber();
     await waitFor(async () => (await guest.page.locator('.network-info').innerText()).includes(block.toLocaleString('en-US')), 'latest block');
     assert((await guest.page.locator('.two-col').innerText()).includes(deployment.address), 'address shown');
+    const details = await guest.page.locator('.two-col').innerText();
+    assert(details.includes(deployment.deploymentBlock.toLocaleString('en-US')), 'deployment block shown');
+    assert(details.includes('Polls') && details.includes('Votes'), 'poll and vote counts shown');
+    assert(details.includes('Ethereum Sepolia'), 'network shown');
+    assert((await guest.page.getByRole('textbox').count()) === 0, 'contract address input remains');
+    assert((await guest.page.getByRole('button', { name: /deploy|link contract/i }).count()) === 0, 'link or deploy action remains');
     await shot(guest.page, '15-contract');
   });
-  await check('Linking a non-contract address is refused', async () => {
-    await guest.page.locator('details > summary').click();
-    await guest.page.locator('#link-addr').fill(A0);
-    await guest.page.getByRole('button', { name: 'Link contract' }).click();
-    await guest.page.getByText('There is no contract at that address on Sepolia.').waitFor();
-  });
   await guest.context.close();
-  await check('Deploy a new copy from the wallet, then use it and switch back', async () => {
-    const p = creator.page;
-    await p.goto(`${APP}#/contract`);
-    await p.locator('details > summary').click();
-    await p.getByRole('button', { name: 'Deploy a new copy' }).click();
-    await p.getByRole('button', { name: /Deploy from/ }).click();
-    await p.getByRole('heading', { name: 'Your contract is deployed' }).waitFor();
-    const addr = await p.locator('.notice.success .facts a[href*="/address/"]').first().getAttribute('title');
-    const code = await provider.getCode(addr);
-    assert(code && code !== '0x', 'no code at deployed address');
-    await p.getByRole('button', { name: 'Use it on this site' }).click();
-    await p.goto(`${APP}#/polls`);
-    await p.getByText('No polls yet').waitFor();
-    await p.goto(`${APP}#/contract`);
-    await p.locator('details > summary').click();
-    await p.getByRole('button', { name: 'Use the site default instead' }).click();
-    await p.goto(`${APP}#/polls`);
-    await p.locator('.poll-row').first().waitFor();
-    return `new contract ${addr.slice(0, 10)}…`;
-  });
 
   // ---- Expired poll ----
   await check('Expired poll: contract rejects the vote even from a page that still shows it open', async () => {

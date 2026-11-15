@@ -9,6 +9,7 @@
     "dev": "vite",
     "prebuild": "node scripts/export-artifacts-if-present.cjs",
     "build": "vite build",
+    "test:unit": "node --test test/*.test.js",
     "preview": "vite preview",
     "test:contracts": "cd blockchain && npx hardhat test",
     "test:e2e": "node e2e/run-local.mjs",

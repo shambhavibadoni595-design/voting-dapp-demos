@@ -82,17 +82,9 @@ export const inspectContract = chain.inspectContract;
 // Polls
 // ---------------------------------------------------------------------------
 
-// Hide only poll #0 from the recorded localhost deployment; the chain data remains unchanged.
-const HIDDEN_POLL = Object.freeze({
-  contractAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-  id: 0,
-});
-
 export function isHiddenPoll(pollId, contractAddress = getActiveContract()?.address) {
-  return (
-    Number(pollId) === HIDDEN_POLL.id &&
-    String(contractAddress || '').toLowerCase() === HIDDEN_POLL.contractAddress.toLowerCase()
-  );
+  // Kept for compatibility with existing consumers. Polls are never hidden.
+  return false;
 }
 
 /** All polls, newest first. */
@@ -103,9 +95,6 @@ export async function getAllPolls() {
 
 export async function getPoll(pollId) {
   const id = Number(pollId);
-  if (isHiddenPoll(id)) {
-    throw new chain.ChainError('NOT_FOUND', `Poll #${id} is hidden on this site.`);
-  }
   return chain.fetchPoll(id);
 }
 

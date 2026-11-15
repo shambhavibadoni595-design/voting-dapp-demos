@@ -1,18 +1,12 @@
 import React from 'react';
 import { useBallot } from '../state/BallotContext.jsx';
 
-/** Shown wherever polls would appear but no contract is linked yet. */
+/** Fallback shown only if the built-in contract configuration is unavailable. */
 export function NoContract({ compact = false }) {
   return (
     <div className={`notice ${compact ? 'compact' : ''}`}>
-      <h3>No contract linked yet</h3>
-      <p>
-        Demos is not connected to a VotingDApp contract on Sepolia, so there are no polls to show. Deploy the
-        contract once, or link one that already exists, on the Contract page.
-      </p>
-      <a className="btn btn-secondary btn-sm" href="#/contract">
-        Set up the contract
-      </a>
+      <h3>The built-in contract is unavailable</h3>
+      <p>Demos could not load its configured VotingDApp contract on Sepolia.</p>
     </div>
   );
 }
